@@ -1,164 +1,152 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import useMicStream from "../hooks/useMicStream";
+import useSavedVerses from "../hooks/useSavedVerses";
+import Waveform from "../components/Waveform";
+import QRCodeDisplay from "../../../shared/components/QRCodeDisplay";
+import { saveSermon } from "../services/saveService";
+import useAuth from "../../auth/useAuth";
 
-type TranscriptSetter = React.Dispatch<React.SetStateAction<string[]>>;
+import TranscriptBox from "../components/TranscriptBox";
+import VerseSection from "../components/VerseSection";
+import TranslationSection from "../components/TranslationSection";
 
-type UseMicStreamReturn = {
-  startRecording: () => Promise<void>;
-  stopRecording: () => void;
-  isRecording: boolean;
-  error: string | null;
-};
-
-export default function useMicStream(
-  setTranscript: TranscriptSetter,
-): UseMicStreamReturn {
-  const [isRecording, setIsRecording] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+export default function LivePage() {
+  const { user } = useAuth();
+  const [sessionId] = useState(() =>
+    Math.random().toString(36).substring(2, 8),
+  );
+  const [joinLink, setJoinLink] = useState("");
 
   useEffect(() => {
-    return () => {
-      // safe cleanup on unmount
-      try {
-        const mr = mediaRecorderRef.current;
-        if (mr && mr.state !== "inactive") mr.stop();
-      } catch {}
-      try {
-        socketRef.current?.close();
-      } catch {}
-      try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-      } catch {}
-      mediaRecorderRef.current = null;
-      socketRef.current = null;
-      streamRef.current = null;
-    };
-  }, []);
+    if (typeof window !== "undefined") {
+      setJoinLink(`${window.location.origin}/audience/${sessionId}`);
+    }
+  }, [sessionId]);
 
-  const startRecording = async () => {
-    setError(null);
+  const {
+    startRecording,
+    stopRecording,
+    isRecording,
+    transcript,
+    verse,
+    verseText,
+    translation,
+    error,
+  } = useMicStream(sessionId);
+
+  const { saveVerse } = useSavedVerses();
+  const translationSource = verseText || transcript.join(" ");
+
+  const [copied, setCopied] = useState(false);
+  const copyLink = async () => {
+    if (!joinLink) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      await navigator.clipboard.writeText(joinLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
 
-      // Optional: detect a supported mimeType for MediaRecorder
-      // const mimeType = detectSupportedMimeType(); // implement if needed
-      // const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
-      const options: MediaRecorderOptions = {};
+  return (
+    <div className="p-6 items-center max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">🔴 Live Sermon</h1>
+        <span
+          className="text-sm text-gray-400"
+          role="status"
+          aria-live="polite"
+        >
+          {isRecording ? "Listening..." : "Idle"}
+        </span>
+      </div>
 
-      const mediaRecorder = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = mediaRecorder;
+      <Waveform active={isRecording} />
 
-      const socket = new WebSocket("ws://127.0.0.1:8000/ws/audio");
-      socketRef.current = socket;
+      {/* Two-column layout */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <TranscriptBox transcript={transcript} />
 
-      // If server expects ArrayBuffer frames, uncomment:
-      // socket.binaryType = "arraybuffer";
+        <div className="space-y-4">
+          <VerseSection
+            verse={verse}
+            verseText={verseText}
+            onSave={() => saveVerse({ reference: verse!, text: verseText! })}
+          />
+          <TranslationSection
+            sourceText={translationSource}
+            liveTranslation={translation}
+          />
+        </div>
 
-      socket.onopen = () => {
-        try {
-          mediaRecorder.start(1000); // timeslice 1s
-          setIsRecording(true);
-        } catch (e) {
-          console.error("MediaRecorder start failed", e);
-          setError("Failed to start recorder");
-        }
-      };
+        {/* Share link card */}
+        <div className="bg-card p-3 rounded text-sm break-words">
+          <div className="mb-2">Share this link with your audience</div>
+          <a
+            href={joinLink || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 break-words"
+            aria-disabled={!joinLink}
+          >
+            {joinLink || "Generating link..."}
+          </a>
+        </div>
+      </div>
 
-      socket.onmessage = (event) => {
-        try {
-          if (typeof event.data === "string") {
-            const data = JSON.parse(event.data);
-            if (data?.transcript) {
-              setTranscript((prev) => [...prev, String(data.transcript)]);
-            }
-          } else {
-            // handle binary messages if server sends them
+      {/* Controls */}
+      <div className="flex items-center justify-center space-x-4">
+        <button
+          disabled={!!error}
+          onClick={isRecording ? stopRecording : startRecording}
+          className={`px-6 py-3 rounded-full ${
+            error
+              ? "bg-gray-600 cursor-not-allowed"
+              : isRecording
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {error
+            ? "Microphone Error"
+            : isRecording
+              ? "Stop Listening"
+              : "Start Listening"}
+        </button>
+
+        <button onClick={copyLink} className="text-xs text-green-400">
+          {copied ? "Copied" : "Copy Link"}
+        </button>
+
+        <button
+          onClick={() =>
+            saveSermon({
+              userId: user?.uid || "",
+              sessionId,
+              transcript,
+              verse,
+              verseText,
+              translation,
+            })
           }
-        } catch (e) {
-          console.warn("Failed to parse socket message", e);
-        }
-      };
+          className="bg-green-600 px-4 py-2 rounded"
+        >
+          💾 Save Sermon
+        </button>
+      </div>
 
-      socket.onerror = (ev) => {
-        console.error("WebSocket error", ev);
-        setError("WebSocket error");
-      };
-
-      socket.onclose = () => {
-        console.log("WebSocket closed");
-        // keep isRecording state in sync if needed:
-        setIsRecording(false);
-      };
-
-      mediaRecorder.ondataavailable = async (event) => {
-        const sock = socketRef.current;
-        if (!event.data || event.data.size === 0) return;
-        if (!sock || sock.readyState !== WebSocket.OPEN) return;
-
-        // Try sending Blob directly (server must accept it)
-        try {
-          sock.send(event.data);
-          return;
-        } catch (e) {
-          console.warn("Failed to send blob directly, will try ArrayBuffer", e);
-        }
-
-        // Fallback: convert Blob to ArrayBuffer and send
-        try {
-          const arrayBuffer = await event.data.arrayBuffer();
-          sock.send(arrayBuffer);
-        } catch (e) {
-          console.error("Failed to send audio chunk", e);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        try {
-          streamRef.current?.getTracks().forEach((t) => t.stop());
-        } catch {}
-        streamRef.current = null;
-        mediaRecorderRef.current = null;
-        setIsRecording(false);
-      };
-    } catch (err: any) {
-      console.error("startRecording error:", err);
-      setError(err?.message ?? "Failed to access microphone or open socket");
-      // best-effort cleanup
-      try {
-        const mr = mediaRecorderRef.current;
-        if (mr && mr.state !== "inactive") mr.stop();
-      } catch {}
-      try {
-        socketRef.current?.close();
-      } catch {}
-      try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-      } catch {}
-      mediaRecorderRef.current = null;
-      socketRef.current = null;
-      streamRef.current = null;
-      setIsRecording(false);
-    }
-  };
-
-  const stopRecording = () => {
-    try {
-      const mr = mediaRecorderRef.current;
-      if (mr && mr.state !== "inactive") mr.stop();
-    } catch (e) {
-      console.warn("Error stopping media recorder", e);
-    }
-    try {
-      socketRef.current?.close();
-    } catch (e) {
-      console.warn("Error closing socket", e);
-    }
-    setIsRecording(false);
-  };
-
-  return { startRecording, stopRecording, isRecording, error };
+      {/* QR + link card */}
+      <div className="bg-card p-4 rounded-xl text-center space-y-3">
+        <p className="text-sm text-gray-400">Scan to join live</p>
+        {joinLink ? (
+          <QRCodeDisplay url={joinLink} />
+        ) : (
+          <div>Generating QR…</div>
+        )}
+        <p className="text-xs text-gray-500 break-all">{joinLink}</p>
+      </div>
+    </div>
+  );
 }

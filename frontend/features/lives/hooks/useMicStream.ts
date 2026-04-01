@@ -1,168 +1,178 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
-type TranscriptCallback = (line: string) => void;
-
-type UseMicStreamReturn = {
-  startRecording: () => Promise<void>;
-  stopRecording: () => void;
-  isRecording: boolean;
-  transcript: string[];
-  error: string | null;
+type StreamData = {
+  transcript?: string;
+  translation?: string;
+  verse?: string;
+  verse_text?: string;
 };
 
-export default function useMicStream(
-  onTranscript?: TranscriptCallback,
-): UseMicStreamReturn {
+export default function useMicStream(sessionId?: string) {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState<string[]>([]);
+  const [verse, setVerse] = useState<string | null>(null);
+  const [verseText, setVerseText] = useState<string>("");
+  const [translation, setTranslation] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    // cleanup on unmount
     return () => {
-      // safe cleanup
       try {
-        const mr = mediaRecorderRef.current;
-        if (mr && mr.state !== "inactive") mr.stop();
-      } catch {}
-      try {
-        socketRef.current?.close();
+        if (
+          mediaRecorderRef.current &&
+          mediaRecorderRef.current.state !== "inactive"
+        ) {
+          mediaRecorderRef.current.stop();
+        }
       } catch {}
       try {
         streamRef.current?.getTracks().forEach((t) => t.stop());
       } catch {}
+      try {
+        socketRef.current?.close();
+      } catch {}
     };
   }, []);
 
-  const detectMimeType = (): string | undefined => {
-    // prefer widely supported Opus in WebM if available
-    const candidates = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/ogg;codecs=opus",
-      "audio/ogg",
-    ];
-    for (const m of candidates) {
-      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m))
-        return m;
-    }
-    return undefined;
-  };
-
   const startRecording = async () => {
+    if (isRecording) return;
     setError(null);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const mimeType = detectMimeType();
-      const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
-      const socket = new WebSocket("ws://127.0.0.1:8000/ws/audio");
+      // include sessionId as query param if provided
+      const base = import.meta.env.VITE_WS_URL || "";
+      const url = sessionId
+        ? `${base}?session=${encodeURIComponent(sessionId)}`
+        : base;
+      const socket = new WebSocket(url);
       socketRef.current = socket;
-      socket.binaryType = "arraybuffer";
 
       socket.onopen = () => {
+        setConnected(true);
         try {
-          mediaRecorder.start(1000); // 1s timeslice
-          setIsRecording(true);
+          mediaRecorder.start(1000); // chunk every 1s
         } catch (e) {
-          console.error("MediaRecorder start failed", e);
+          console.error("Failed to start MediaRecorder", e);
           setError("Failed to start recorder");
+          socket.close();
+          return;
         }
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+            try {
+              socket.send(event.data);
+            } catch (e) {
+              console.error("Socket send error", e);
+            }
+          }
+        };
+
+        mediaRecorder.onerror = (ev) => {
+          console.error("MediaRecorder error", ev);
+          setError("Recording error");
+        };
       };
 
       socket.onmessage = (event) => {
         try {
-          if (typeof event.data === "string") {
-            const data = JSON.parse(event.data);
-            if (data?.transcript) {
-              const line = String(data.transcript);
-              setTranscript((p) => [...p, line]);
-              onTranscript ? onTranscript(line) : null;
-            }
-          } else {
-            // handle binary responses if your server sends them
+          const data: StreamData = JSON.parse(event.data);
+
+          if (data.transcript) {
+            setTranscript((prev) => [...prev, data.transcript as string]);
+          }
+          if (data.translation) {
+            setTranslation(data.translation);
+          }
+          if (data.verse) {
+            setVerse(data.verse);
+          }
+          if (data.verse_text) {
+            setVerseText(data.verse_text);
           }
         } catch (e) {
-          console.warn("Failed to parse socket message", e);
+          console.error("Failed to parse socket message", e);
         }
       };
 
       socket.onerror = (ev) => {
         console.error("WebSocket error", ev);
-        setError("WebSocket error");
+        setError("Connection error");
       };
 
-      socket.onclose = (ev) => {
-        console.log("WebSocket closed", ev);
-        // ensure UI reflects stopped state
-        setIsRecording(false);
+      socket.onclose = () => {
+        setConnected(false);
       };
 
-      mediaRecorder.ondataavailable = async (event) => {
-        const sock = socketRef.current;
-        if (!event.data || event.data.size === 0) return;
-        if (!sock || sock.readyState !== WebSocket.OPEN) return;
-
-        // Convert Blob to ArrayBuffer for consistent binary frames
-        try {
-          const buffer = await event.data.arrayBuffer();
-          sock.send(buffer);
-        } catch (e) {
-          console.error("Failed to send audio chunk", e);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        try {
-          streamRef.current?.getTracks().forEach((t) => t.stop());
-        } catch {}
-        streamRef.current = null;
-        mediaRecorderRef.current = null;
-      };
-    } catch (err: any) {
-      console.error("startRecording error:", err);
-      if (err && err.name === "NotAllowedError") {
-        setError("Microphone permission denied");
-      } else {
-        setError(err?.message ?? "Failed to access microphone or open socket");
-      }
-      // best-effort cleanup
-      try {
-        mediaRecorderRef.current?.state !== "inactive" &&
-          mediaRecorderRef.current?.stop();
-      } catch {}
-      try {
-        socketRef.current?.close();
-      } catch {}
-      try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-      } catch {}
-      setIsRecording(false);
+      setIsRecording(true);
+    } catch (err) {
+      console.error("getUserMedia error", err);
+      setError("Microphone access denied");
     }
   };
 
   const stopRecording = () => {
     try {
-      const mr = mediaRecorderRef.current;
-      if (mr && mr.state !== "inactive") mr.stop();
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
     } catch (e) {
-      console.warn("Error stopping media recorder", e);
+      console.warn("Error stopping MediaRecorder", e);
     }
+
+    try {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    } catch (e) {
+      console.warn("Error stopping tracks", e);
+    }
+
     try {
       socketRef.current?.close();
     } catch (e) {
       console.warn("Error closing socket", e);
+    } finally {
+      socketRef.current = null;
     }
+
+    mediaRecorderRef.current = null;
     setIsRecording(false);
+    setConnected(false);
   };
 
-  return { startRecording, stopRecording, isRecording, transcript, error };
+  const reset = (clearTranscript = false) => {
+    setError(null);
+    setTranslation("");
+    setVerse(null);
+    setVerseText("");
+    if (clearTranscript) setTranscript([]);
+  };
+
+  return {
+    startRecording,
+    stopRecording,
+    isRecording,
+    transcript,
+    verse,
+    verseText,
+    translation,
+    error,
+    connected,
+    reset,
+  };
 }
