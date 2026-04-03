@@ -9,6 +9,7 @@ export default function Navbar() {
 
       <div className="flex gap-4 text-sm">
         <Link to="/">Live</Link>
+        <a href="/landing">Home</a>
         <Link to="/saved">Saved</Link>
         <Link to="/settings">Settings</Link>
         <a href="/presentation" target="_blank">
@@ -18,6 +19,7 @@ export default function Navbar() {
           Audience
         </a>
         <Link to="/history">History</Link>
+        <Link to="/analytics">Analytics</Link>
         <button onClick={() => signOut(auth)}>Logout</button>
       </div>
     </div>

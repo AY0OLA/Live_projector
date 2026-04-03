@@ -16,7 +16,6 @@ def translate_text(text: str, target_lang="en"):
         data = response.json()
 
         return data[0][0][0]
-
     except Exception as e:
         print("Translation error:", e)
         return ""

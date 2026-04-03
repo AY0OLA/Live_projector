@@ -8,11 +8,14 @@ import AudiencePage from "../features/audience/AudiencePage";
 import useAuth from "../features/auth/useAuth";
 import LoginPage from "../features/auth/LoginPage";
 import HistoryPage from "../features/history/HistoryPage";
+import SuccessPage from "../features/payment/SuccessPage";
+import CancelPage from "../features/payment/CancelPage";
+import AnalyticsPage from "../features/analytics/AnalyticsPage";
+import LandingPage from "../src/pages/LandingPage";
 
 export default function AppRouter() {
   const { user, loading } = useAuth();
 
-  // Optional: show a loading state while auth is being determined
   if (loading) {
     return <div className="p-6">Checking authentication…</div>;
   }
@@ -20,22 +23,25 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public route (example) */}
+        {/* Public routes */}
         <Route path="/presentation" element={<PresentationPage />} />
-
-        {/* Login route */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/success" element={<SuccessPage />} />
+        <Route path="/cancel" element={<CancelPage />} />
 
         {/* Protected app layout and nested routes */}
         <Route
           path="/"
           element={user ? <AppLayout /> : <Navigate to="/login" replace />}
         >
-          <Route index element={<LivePage />} />
+          {/* LandingPage is now the default for "/" */}
+          <Route index element={<LandingPage />} />
+          <Route path="live" element={<LivePage />} />
           <Route path="saved" element={<SavedPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="audience/:sessionId" element={<AudiencePage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
 
         {/* Fallback */}

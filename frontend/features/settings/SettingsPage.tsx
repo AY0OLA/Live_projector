@@ -2,6 +2,15 @@ import { useState } from "react";
 
 export default function SettingsPage() {
   const [language, setLanguage] = useState("english");
+  const upgrade = async () => {
+    const res = await fetch("http://localhost:8000/create-checkout-session", {
+      method: "POST",
+    });
+
+    const data = await res.json();
+
+    window.location.href = data.url;
+  };
 
   return (
     <div className="space-y-6">
@@ -31,6 +40,9 @@ export default function SettingsPage() {
           </option>
         </select>
       </div>
+      <button onClick={upgrade} className="bg-purple-600 px-4 py-2 rounded">
+        🚀 Upgrade to Pro
+      </button>
     </div>
   );
 }
