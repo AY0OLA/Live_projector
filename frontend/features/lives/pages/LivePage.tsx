@@ -36,8 +36,7 @@ export default function LivePage() {
 
   const { saveVerse } = useSavedVerses();
 
-  // Normalize nullable values from useMicStream
-  const normalizedVerse: string | undefined = verse ?? undefined;
+  const normalizedVerse: string | null = verse ?? null;
   const normalizedVerseText: string = verseText ?? "";
   const normalizedTranslation: string = translation ?? "";
   const translationSource = normalizedVerseText || transcript.join(" ");
