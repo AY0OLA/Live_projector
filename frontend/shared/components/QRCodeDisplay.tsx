@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 
@@ -13,12 +14,14 @@ export default function QRCodeDisplay({
   size = 180,
   className = "",
   showCopy = true,
-}: Props): JSX.Element {
+}: Props): ReactElement {
   const [copied, setCopied] = useState(false);
 
   const isValidUrl = useMemo(() => {
     if (!url) return false;
     try {
+      // allow relative URLs by providing base when available
+      // eslint-disable-next-line no-new
       new URL(
         url,
         typeof window !== "undefined" ? window.location.href : undefined,
@@ -32,6 +35,10 @@ export default function QRCodeDisplay({
   const handleCopy = async () => {
     if (!isValidUrl) return;
     try {
+      if (!navigator.clipboard) {
+        setCopied(false);
+        return;
+      }
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);

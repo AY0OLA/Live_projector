@@ -23,18 +23,15 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes */}
         <Route path="/presentation" element={<PresentationPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/success" element={<SuccessPage />} />
         <Route path="/cancel" element={<CancelPage />} />
 
-        {/* Protected app layout and nested routes */}
         <Route
           path="/"
           element={user ? <AppLayout /> : <Navigate to="/login" replace />}
         >
-          {/* LandingPage is now the default for "/" */}
           <Route index element={<LandingPage />} />
           <Route path="live" element={<LivePage />} />
           <Route path="saved" element={<SavedPage />} />
@@ -44,7 +41,6 @@ export default function AppRouter() {
           <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
 
-        {/* Fallback */}
         <Route
           path="*"
           element={<Navigate to={user ? "/" : "/login"} replace />}
