@@ -8,3 +8,6 @@ def fetch_bible_verse(ref: str):
     except Exception as e:
         print("Bible fetch error:", e)
         return ""
+
+def detect_verse(ref: str):
+    return fetch_bible_verse(ref)
