@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 
 type Props = {
   url: string;
-  size?: number; // QR pixel size, default 180
+  size?: number;
   className?: string;
   showCopy?: boolean;
 };
@@ -13,14 +13,12 @@ export default function QRCodeDisplay({
   size = 180,
   className = "",
   showCopy = true,
-}: Props) {
+}: Props): JSX.Element {
   const [copied, setCopied] = useState(false);
 
   const isValidUrl = useMemo(() => {
     if (!url) return false;
     try {
-      // Basic validation; allows relative URLs too
-      // eslint-disable-next-line no-new
       new URL(
         url,
         typeof window !== "undefined" ? window.location.href : undefined,

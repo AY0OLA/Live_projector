@@ -35,12 +35,22 @@ export default function LivePage() {
   } = useMicStream(sessionId);
 
   const { saveVerse } = useSavedVerses();
-  const translationSource = verseText || transcript.join(" ");
+
+  // Normalize nullable values from useMicStream
+  const normalizedVerse: string | undefined = verse ?? undefined;
+  const normalizedVerseText: string = verseText ?? "";
+  const normalizedTranslation: string = translation ?? "";
+  const translationSource = normalizedVerseText || transcript.join(" ");
 
   const [copied, setCopied] = useState(false);
   const copyLink = async () => {
     if (!joinLink) return;
     try {
+      if (!navigator.clipboard) {
+        // fallback or silently fail if clipboard API not available
+        setCopied(false);
+        return;
+      }
       await navigator.clipboard.writeText(joinLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
@@ -71,13 +81,18 @@ export default function LivePage() {
 
         <div className="space-y-4">
           <VerseSection
-            verse={verse}
-            verseText={verseText}
-            onSave={() => saveVerse({ reference: verse!, text: verseText! })}
+            verse={normalizedVerse}
+            verseText={normalizedVerseText}
+            onSave={() =>
+              saveVerse({
+                reference: normalizedVerse ?? "",
+                text: normalizedVerseText,
+              })
+            }
           />
           <TranslationSection
             sourceText={translationSource}
-            liveTranslation={translation}
+            liveTranslation={normalizedTranslation}
           />
         </div>
 
@@ -126,9 +141,9 @@ export default function LivePage() {
               userId: user?.uid || "",
               sessionId,
               transcript,
-              verse,
-              verseText,
-              translation,
+              verse: normalizedVerse ?? "",
+              verseText: normalizedVerseText,
+              translation: normalizedTranslation,
             })
           }
           className="bg-green-600 px-4 py-2 rounded"

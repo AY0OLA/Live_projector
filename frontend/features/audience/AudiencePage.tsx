@@ -19,11 +19,13 @@ export default function AudiencePage() {
     const socket = new WebSocket(
       `${import.meta.env.VITE_WS_URL}?session=${sessionId}`,
     );
+
     socket.onmessage = (event) => {
       const data: Data = JSON.parse(event.data);
 
       if (data.transcript) {
-        setTranscript((prev) => [...prev, data.transcript]);
+        const t = data.transcript; 
+        setTranscript((prev) => [...prev, t]);
       }
 
       if (data.translation) {
@@ -35,7 +37,7 @@ export default function AudiencePage() {
     };
 
     return () => socket.close();
-  }, []);
+  }, [sessionId]);
 
   return (
     <div className="p-4 space-y-4 max-w-xl mx-auto">

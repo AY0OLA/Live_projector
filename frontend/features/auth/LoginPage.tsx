@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../src/lib/firebase";
 import { useNavigate } from "react-router-dom";
 
-const USE_BACKEND_LOGIN = false; // set true to use backend /auth/login instead of Firebase client SDK
+const USE_BACKEND_LOGIN = false; 
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,6 @@ export default function LoginPage() {
       setError("Email and password are required");
       return false;
     }
-    // basic email format check
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRe.test(email)) {
       setError("Please enter a valid email address");
@@ -33,7 +32,6 @@ export default function LoginPage() {
 
     try {
       if (USE_BACKEND_LOGIN) {
-        // Backend login flow
         const res = await fetch("/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -48,21 +46,23 @@ export default function LoginPage() {
         }
 
         const data = await res.json();
-        // WARNING Store tokens securely. localStorage is vulnerable to XSS.
-        // Prefer HttpOnly secure cookies set by the server.
         if (data?.token) {
           localStorage.setItem("token", data.token);
         }
-        // Optionally navigate after backend login
         navigate("/");
       } else {
-        // Firebase client SDK flow
         await signInWithEmailAndPassword(auth, email, password);
         navigate("/");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Login error", err);
-      setError(err?.message || "Login failed");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (typeof err === "string") {
+        setError(err);
+      } else {
+        setError("Login failed");
+      }
     } finally {
       setLoading(false);
     }
