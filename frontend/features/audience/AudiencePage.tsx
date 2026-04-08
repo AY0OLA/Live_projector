@@ -19,7 +19,7 @@ export default function AudiencePage() {
 
   const transcriptRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -40,7 +40,6 @@ export default function AudiencePage() {
         setConnected(false);
         console.log("Disconnected");
 
-    
         reconnectTimeout.current = setTimeout(connect, 2000);
       };
 

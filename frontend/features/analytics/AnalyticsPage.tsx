@@ -3,23 +3,58 @@ import { db } from "../../src/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import useAuth from "../auth/useAuth";
 
+type Sermon = {
+  userId: number;
+  sessionId: string;
+  transcript: string[];
+  verse?: string;
+  verseText?: string;
+  translation?: string;
+};
+
 export default function AnalyticsPage() {
-  const { user } = useAuth();
-  const [sermons, setSermons] = useState<any[]>([]);
+  const { user, loading } = useAuth();
+
+  const [sermons, setSermons] = useState<Sermon[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const snapshot = await getDocs(collection(db, "sermons"));
-      const data = snapshot.docs.map((doc) => doc.data());
+    if (!user) return;
 
-      const userData = data.filter((d) => d.userId === user?.uid);
-      setSermons(userData);
+    const fetchData = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "sermons"));
+        const data: Sermon[] = snapshot.docs.map((doc) => doc.data() as Sermon);
+
+       
+        const userData = data.filter((d) => d.userId === user.id);
+
+        setSermons(userData);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
   }, [user]);
 
-  // 📊 Calculations
+  // Loading state
+  if (loading || isLoading) {
+    return <p className="text-gray-400">Loading analytics...</p>;
+  }
+
+  // Empty state
+  if (sermons.length === 0) {
+    return (
+      <p className="text-gray-500">
+        No sermons yet. Start a live session to see analytics.
+      </p>
+    );
+  }
+
+  // Stats
   const totalSermons = sermons.length;
 
   const totalWords = sermons.reduce((acc, s) => {
@@ -44,36 +79,41 @@ export default function AnalyticsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-card p-4 rounded-xl">
-          <p>Total Sermons</p>
+        <div className="bg-[#1A1A1A] p-4 rounded-xl">
+          <p className="text-gray-400 text-sm">Total Sermons</p>
           <h2 className="text-2xl font-bold">{totalSermons}</h2>
         </div>
 
-        <div className="bg-card p-4 rounded-xl">
-          <p>Total Words</p>
+        <div className="bg-[#1A1A1A] p-4 rounded-xl">
+          <p className="text-gray-400 text-sm">Total Words</p>
           <h2 className="text-2xl font-bold">{totalWords}</h2>
         </div>
       </div>
 
       {/* Top Verses */}
-      <div className="bg-card p-4 rounded-xl">
+      <div className="bg-[#1A1A1A] p-4 rounded-xl">
         <h2 className="font-semibold mb-2">🔥 Top Verses</h2>
 
-        {topVerses.map(([verse, count], i) => (
-          <p key={i} className="text-sm text-gray-300">
-            {verse} ({count} times)
-          </p>
-        ))}
+        {topVerses.length === 0 ? (
+          <p className="text-gray-500 text-sm">No verses yet</p>
+        ) : (
+          topVerses.map(([verse, count], i) => (
+            <p key={i} className="text-sm text-gray-300">
+              {verse} ({count} times)
+            </p>
+          ))
+        )}
       </div>
 
-      {/* Recent */}
-      <div className="bg-card p-4 rounded-xl">
+      {/* Recent Sermons */}
+      <div className="bg-[#1A1A1A] p-4 rounded-xl">
         <h2 className="font-semibold mb-2">🕒 Recent Sermons</h2>
 
         {sermons.slice(0, 5).map((s, i) => (
-          <p key={i} className="text-sm text-gray-400">
-            {s.verse || "No verse"} — {s.transcript?.slice(0, 5).join(" ")}...
-          </p>
+          <div key={i} className="text-sm text-gray-400 mb-2">
+            <p className="text-purple-400">{s.verse || "No verse detected"}</p>
+            <p>{s.transcript?.slice(0, 5).join(" ")}...</p>
+          </div>
         ))}
       </div>
     </div>
