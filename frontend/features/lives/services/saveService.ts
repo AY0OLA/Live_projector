@@ -2,7 +2,7 @@ import { db } from "../../../src/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export async function saveSermon(data: {
-  userId: string;
+  userId: number;
   sessionId: string;
   transcript: string[];
   verse?: string;
