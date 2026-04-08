@@ -17,6 +17,8 @@ import useIsDesktop from "../src/hooks/useIsDesktop";
 import DesktopOnly from "../src/components/DesktopOnly";
 import ProjectorPage from "../features/lives/pages/ProjectorPage"
 
+// ...imports unchanged
+
 export default function AppRouter() {
   const { user, loading } = useAuth();
   const isDesktop = useIsDesktop();
@@ -43,16 +45,17 @@ export default function AppRouter() {
           element={user ? <AppLayout /> : <Navigate to="/login" replace />}
         >
           <Route path="live" element={<LivePage />} />
-        <Route path="/projector/:sessionId" element={<ProjectorPage />} />
+          <Route path="projector/:sessionId" element={<ProjectorPage />} />
           <Route path="saved" element={<SavedPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="audience/:sessionId" element={<AudiencePage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
+
         <Route
           path="*"
-          element={<Navigate to={user ? "/app/live" : "/login"} replace />}
+          element={<Navigate to={user ? "/app/live" : "/"} replace />}
         />
       </Routes>
     </BrowserRouter>
