@@ -7,14 +7,22 @@ import AppLayout from "../layout/AppLayout";
 import AudiencePage from "../features/audience/AudiencePage";
 import useAuth from "../features/auth/useAuth";
 import LoginPage from "../features/auth/LoginPage";
+import SignupPage from "../features/auth/SignupPage";
 import HistoryPage from "../features/history/HistoryPage";
 import SuccessPage from "../features/payment/SuccessPage";
 import CancelPage from "../features/payment/CancelPage";
 import AnalyticsPage from "../features/analytics/AnalyticsPage";
 import LandingPage from "../src/pages/LandingPage";
+import useIsDesktop from "../src/hooks/useIsDesktop";
+import DesktopOnly from "../src/components/DesktopOnly";
 
 export default function AppRouter() {
   const { user, loading } = useAuth();
+  const isDesktop = useIsDesktop();
+
+  if (!isDesktop) {
+    return <DesktopOnly />;
+  }
 
   if (loading) {
     return <div className="p-6">Checking authentication…</div>;
@@ -23,16 +31,16 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/presentation" element={<PresentationPage />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} /> {/* ✅ NEW */}
+        <Route path="/presentation" element={<PresentationPage />} />
         <Route path="/success" element={<SuccessPage />} />
         <Route path="/cancel" element={<CancelPage />} />
-
         <Route
-          path="/"
+          path="/app"
           element={user ? <AppLayout /> : <Navigate to="/login" replace />}
         >
-          <Route index element={<LandingPage />} />
           <Route path="live" element={<LivePage />} />
           <Route path="saved" element={<SavedPage />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -40,10 +48,9 @@ export default function AppRouter() {
           <Route path="history" element={<HistoryPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
-
         <Route
           path="*"
-          element={<Navigate to={user ? "/" : "/login"} replace />}
+          element={<Navigate to={user ? "/app/live" : "/login"} replace />}
         />
       </Routes>
     </BrowserRouter>

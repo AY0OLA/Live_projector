@@ -1,19 +1,26 @@
-// src/features/auth/useAuth.ts
 import { useEffect, useState } from "react";
-import { auth, onAuthStateChanged } from "../../src/lib/firebase";
-import type { User } from "firebase/auth";
 
-export default function useAuth(): { user: User | null; loading: boolean } {
-  const [user, setUser] = useState<User | null>(null);
+type AuthUser = {
+  token: string;
+};
+
+export default function useAuth(): {
+  user: AuthUser | null;
+  loading: boolean;
+} {
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
+    const token = localStorage.getItem("token");
 
-    return () => unsub();
+    if (token) {
+      setUser({ token });
+    } else {
+      setUser(null);
+    }
+
+    setLoading(false);
   }, []);
 
   return { user, loading };

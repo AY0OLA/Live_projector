@@ -1,7 +1,6 @@
 export default function LandingPage() {
   return (
     <div className="bg-black text-white">
-      {/* HERO */}
       <section className="h-screen flex flex-col items-center justify-center text-center px-6">
         <h1 className="text-4xl md:text-6xl font-bold">
           Real-Time Bible Verses <br /> During Sermons
@@ -13,7 +12,7 @@ export default function LandingPage() {
         </p>
 
         <div className="flex gap-4 mt-6">
-          <a href="/" className="bg-accent px-6 py-3 rounded-full">
+          <a href="/login" className="bg-accent px-6 py-3 rounded-full">
             Try Live Demo
           </a>
 
@@ -23,7 +22,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FEATURES */}
       <section className="p-10 grid md:grid-cols-3 gap-6">
         <Feature
           title="📖 Auto Verse Detection"
@@ -39,7 +37,6 @@ export default function LandingPage() {
         />
       </section>
 
-      {/* HOW IT WORKS */}
       <section className="p-10 text-center space-y-4">
         <h2 className="text-2xl font-bold">How It Works</h2>
 
@@ -49,14 +46,13 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* CTA */}
       <section className="p-10 text-center">
         <h2 className="text-2xl font-bold">
           Ready to Transform Your Services?
         </h2>
 
         <a
-          href="/"
+          href="/login"
           className="mt-4 inline-block bg-purple-600 px-6 py-3 rounded-full"
         >
           Get Started
