@@ -12,10 +12,13 @@ import TranslationSection from "../components/TranslationSection";
 
 export default function LivePage() {
   const { user } = useAuth();
+
   const [sessionId] = useState(() =>
     Math.random().toString(36).substring(2, 8),
   );
+
   const [joinLink, setJoinLink] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -36,45 +39,53 @@ export default function LivePage() {
 
   const { saveVerse } = useSavedVerses();
 
-  const normalizedVerse: string | null = verse ?? null;
-  const normalizedVerseText: string = verseText ?? "";
-  const normalizedTranslation: string = translation ?? "";
+  const normalizedVerse = verse ?? null;
+  const normalizedVerseText = verseText ?? "";
+  const normalizedTranslation = translation ?? "";
   const translationSource = normalizedVerseText || transcript.join(" ");
 
-  const [copied, setCopied] = useState(false);
   const copyLink = async () => {
     if (!joinLink) return;
+
     try {
-      if (!navigator.clipboard) {
-        // fallback or silently fail if clipboard API not available
-        setCopied(false);
-        return;
-      }
       await navigator.clipboard.writeText(joinLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
+    } catch (err) {
+      console.error("Copy failed:", err);
       setCopied(false);
     }
   };
 
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      await saveSermon({
+        userId: user.id,
+        sessionId,
+        transcript,
+        verse: normalizedVerse ?? "",
+        verseText: normalizedVerseText,
+        translation: normalizedTranslation,
+      });
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+  };
+
   return (
-    <div className="p-6 items-center max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#0D0D0D] text-white p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">🔴 Live Sermon</h1>
-        <span
-          className="text-sm text-gray-400"
-          role="status"
-          aria-live="polite"
-        >
-          {isRecording ? "Listening..." : "Idle"}
+        <span className="text-sm text-gray-400">
+          {error ? "Mic Error" : isRecording ? "Listening..." : "Idle"}
         </span>
       </div>
 
       <Waveform active={isRecording} />
 
-      {/* Two-column layout */}
       <div className="grid md:grid-cols-2 gap-6">
         <TranscriptBox transcript={transcript} />
 
@@ -89,33 +100,36 @@ export default function LivePage() {
               })
             }
           />
+
           <TranslationSection
             sourceText={translationSource}
             liveTranslation={normalizedTranslation}
           />
         </div>
 
-        {/* Share link card */}
-        <div className="bg-card p-3 rounded text-sm break-words">
-          <div className="mb-2">Share this link with your audience</div>
+        <div className="bg-[#1A1A1A] p-4 rounded-xl text-sm space-y-2">
+          <p className="text-gray-400">Share this link</p>
+
           <a
             href={joinLink || "#"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-400 break-words"
-            aria-disabled={!joinLink}
           >
             {joinLink || "Generating link..."}
           </a>
+
+          <button onClick={copyLink} className="text-xs text-green-400">
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-center space-x-4">
+      <div className="flex items-center justify-center gap-4">
         <button
           disabled={!!error}
           onClick={isRecording ? stopRecording : startRecording}
-          className={`px-6 py-3 rounded-full ${
+          className={`px-6 py-3 rounded-full transition ${
             error
               ? "bg-gray-600 cursor-not-allowed"
               : isRecording
@@ -130,35 +144,19 @@ export default function LivePage() {
               : "Start Listening"}
         </button>
 
-        <button onClick={copyLink} className="text-xs text-green-400">
-          {copied ? "Copied" : "Copy Link"}
-        </button>
-
         <button
-          onClick={() =>
-            saveSermon({
-              userId: user?.uid || "",
-              sessionId,
-              transcript,
-              verse: normalizedVerse ?? "",
-              verseText: normalizedVerseText,
-              translation: normalizedTranslation,
-            })
-          }
-          className="bg-green-600 px-4 py-2 rounded"
+          onClick={handleSave}
+          className="bg-green-600 px-4 py-2 rounded hover:bg-green-700"
         >
           💾 Save Sermon
         </button>
       </div>
 
-      {/* QR + link card */}
-      <div className="bg-card p-4 rounded-xl text-center space-y-3">
+      <div className="bg-[#1A1A1A] p-5 rounded-xl text-center space-y-3">
         <p className="text-sm text-gray-400">Scan to join live</p>
-        {joinLink ? (
-          <QRCodeDisplay url={joinLink} />
-        ) : (
-          <div>Generating QR…</div>
-        )}
+
+        {joinLink ? <QRCodeDisplay url={joinLink} /> : <p>Generating QR...</p>}
+
         <p className="text-xs text-gray-500 break-all">{joinLink}</p>
       </div>
     </div>

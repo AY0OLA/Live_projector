@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 type Data = {
@@ -14,18 +14,37 @@ export default function AudiencePage() {
   const [translation, setTranslation] = useState("");
   const [verse, setVerse] = useState("");
   const [verseText, setVerseText] = useState("");
+  const [connected, setConnected] = useState(false);
+
+  const transcriptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!sessionId) return;
+
     const socket = new WebSocket(
       `${import.meta.env.VITE_WS_URL}?session=${sessionId}`,
     );
+
+    socket.onopen = () => {
+      setConnected(true);
+    };
+
+    socket.onclose = () => {
+      setConnected(false);
+    };
+
+    socket.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
 
     socket.onmessage = (event) => {
       const data: Data = JSON.parse(event.data);
 
       if (data.transcript) {
-        const t = data.transcript; 
-        setTranscript((prev) => [...prev, t]);
+        setTranscript((prev) => {
+          const updated = [...prev, data.transcript!];
+          return updated.slice(-50); // limit
+        });
       }
 
       if (data.translation) {
@@ -39,32 +58,54 @@ export default function AudiencePage() {
     return () => socket.close();
   }, [sessionId]);
 
+  // Auto-scroll transcript
+  useEffect(() => {
+    transcriptRef.current?.scrollTo({
+      top: transcriptRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [transcript]);
+
   return (
-    <div className="p-4 space-y-4 max-w-xl mx-auto">
-      <h1 className="text-lg font-bold text-center">📡 Live Service</h1>
-
-      {/* Verse */}
-      {verse && (
-        <div className="bg-card p-4 rounded-xl">
-          <h2 className="font-semibold">{verse}</h2>
-          <p className="text-sm text-gray-300 mt-2">{verseText}</p>
-        </div>
-      )}
-
-      {/* Translation */}
-      <div className="bg-card p-4 rounded-xl">
-        <p className="text-blue-300 text-sm">
-          {translation || "Waiting for translation..."}
-        </p>
+    <div className="min-h-screen bg-[#0D0D0D] text-white p-4 flex flex-col items-center">
+      <div className="flex items-center gap-2 mb-4">
+        <span
+          className={`h-2 w-2 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
+        />
+        <h1 className="text-xl font-semibold">Live Service</h1>
       </div>
 
-      {/* Transcript */}
-      <div className="bg-card p-4 rounded-xl max-h-64 overflow-y-auto space-y-1">
-        {transcript.map((line, i) => (
-          <p key={i} className="text-xs text-gray-400">
-            {line}
+      <div className="w-full max-w-xl space-y-4">
+        {verse && (
+          <div className="bg-[#1A1A1A] p-5 rounded-2xl shadow-lg border border-white/5">
+            <h2 className="font-semibold text-lg tracking-wide">{verse}</h2>
+            <p className="text-sm text-gray-300 mt-2 leading-relaxed">
+              {verseText}
+            </p>
+          </div>
+        )}
+
+        <div className="bg-[#1A1A1A] p-4 rounded-2xl">
+          <p className="text-blue-400 text-sm">
+            {translation || "Waiting for translation..."}
           </p>
-        ))}
+        </div>
+
+        <div
+          ref={transcriptRef}
+          className="bg-[#1A1A1A] p-4 rounded-2xl max-h-64 overflow-y-auto space-y-1"
+        >
+          {transcript.map((line, i) => (
+            <p
+              key={i}
+              className={`text-xs ${
+                i === transcript.length - 1 ? "text-white" : "text-gray-500"
+              }`}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
       </div>
     </div>
   );
