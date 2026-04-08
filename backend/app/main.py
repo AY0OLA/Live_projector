@@ -11,7 +11,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",  # local dev
-        "https://live-projector.vercel.app",  # production
+        "https://live-projector-one.vercel.app",  # production
     ],
     allow_credentials=True,
     allow_methods=["*"],
