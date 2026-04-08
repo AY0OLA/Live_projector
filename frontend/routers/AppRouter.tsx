@@ -15,6 +15,7 @@ import AnalyticsPage from "../features/analytics/AnalyticsPage";
 import LandingPage from "../src/pages/LandingPage";
 import useIsDesktop from "../src/hooks/useIsDesktop";
 import DesktopOnly from "../src/components/DesktopOnly";
+import ProjectorPage from "../features/lives/pages/ProjectorPage"
 
 export default function AppRouter() {
   const { user, loading } = useAuth();
@@ -33,7 +34,7 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} /> {/* ✅ NEW */}
+        <Route path="/signup" element={<SignupPage />} />
         <Route path="/presentation" element={<PresentationPage />} />
         <Route path="/success" element={<SuccessPage />} />
         <Route path="/cancel" element={<CancelPage />} />
@@ -42,6 +43,7 @@ export default function AppRouter() {
           element={user ? <AppLayout /> : <Navigate to="/login" replace />}
         >
           <Route path="live" element={<LivePage />} />
+        <Route path="/projector/:sessionId" element={<ProjectorPage />} />
           <Route path="saved" element={<SavedPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="audience/:sessionId" element={<AudiencePage />} />

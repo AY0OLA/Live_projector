@@ -18,11 +18,15 @@ export default function LivePage() {
   );
 
   const [joinLink, setJoinLink] = useState("");
+  const [projectorLink, setProjectorLink] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Generate links safely
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setJoinLink(`${window.location.origin}/audience/${sessionId}`);
+      const origin = window.location.origin;
+      setJoinLink(`${origin}/audience/${sessionId}`);
+      setProjectorLink(`${origin}/projector/${sessionId}`);
     }
   }, [sessionId]);
 
@@ -44,6 +48,15 @@ export default function LivePage() {
   const normalizedTranslation = translation ?? "";
   const translationSource = normalizedVerseText || transcript.join(" ");
 
+ 
+  const enterFullscreen = () => {
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      el.requestFullscreen();
+    }
+  };
+
+
   const copyLink = async () => {
     if (!joinLink) return;
 
@@ -53,10 +66,10 @@ export default function LivePage() {
       setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       console.error("Copy failed:", err);
-      setCopied(false);
     }
   };
 
+  
   const handleSave = async () => {
     if (!user) return;
 
@@ -84,8 +97,10 @@ export default function LivePage() {
         </span>
       </div>
 
+      {/* Waveform */}
       <Waveform active={isRecording} />
 
+      {/* Main Grid */}
       <div className="grid md:grid-cols-2 gap-6">
         <TranscriptBox transcript={transcript} />
 
@@ -107,8 +122,9 @@ export default function LivePage() {
           />
         </div>
 
+        {/* Share Card */}
         <div className="bg-[#1A1A1A] p-4 rounded-xl text-sm space-y-2">
-          <p className="text-gray-400">Share this link</p>
+          <p className="text-gray-400">Audience Link</p>
 
           <a
             href={joinLink || "#"}
@@ -123,8 +139,27 @@ export default function LivePage() {
             {copied ? "Copied!" : "Copy Link"}
           </button>
         </div>
+
+        {/* Projector Card */}
+        <div className="bg-[#1A1A1A] p-4 rounded-xl text-sm space-y-2">
+          <p className="text-gray-400">Projector Mode</p>
+
+          <a
+            href={projectorLink || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-400 break-words"
+          >
+            Open Projector Screen
+          </a>
+
+          <button onClick={enterFullscreen} className="text-xs text-yellow-400">
+            Go Fullscreen
+          </button>
+        </div>
       </div>
 
+      {/* Controls */}
       <div className="flex items-center justify-center gap-4">
         <button
           disabled={!!error}
