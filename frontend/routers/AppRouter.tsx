@@ -17,20 +17,17 @@ import useIsDesktop from "../src/hooks/useIsDesktop";
 import DesktopOnly from "../src/components/DesktopOnly";
 import ProjectorPage from "../features/lives/pages/ProjectorPage"
 
-// ...imports unchanged
+
 
 export default function AppRouter() {
-  const { user, loading } = useAuth();
+  const { user} = useAuth();
   const isDesktop = useIsDesktop();
 
   if (!isDesktop) {
     return <DesktopOnly />;
   }
 
-  if (loading) {
-    return <div className="p-6">Checking authentication…</div>;
-  }
-
+ 
   return (
     <BrowserRouter>
       <Routes>

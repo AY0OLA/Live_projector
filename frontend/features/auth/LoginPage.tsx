@@ -47,6 +47,7 @@ export default function LoginPage() {
       <form
         onSubmit={handleLogin}
         className="bg-card p-6 rounded-xl w-80 space-y-4"
+        method="POST"
       >
         <h1 className="text-xl font-bold text-center">Login</h1>
 

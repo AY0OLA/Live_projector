@@ -85,6 +85,7 @@ export default function SignupPage() {
             signup();
           }}
           className="space-y-4"
+          method="POST"
         >
           <input
             type="email"
