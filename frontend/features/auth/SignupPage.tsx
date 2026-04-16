@@ -35,7 +35,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/signup", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -49,7 +49,7 @@ export default function SignupPage() {
         throw new Error(data.detail || "Signup failed");
       }
 
-      const loginRes = await fetch("http://127.0.0.1:8000/auth/login", {
+      const loginRes = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
